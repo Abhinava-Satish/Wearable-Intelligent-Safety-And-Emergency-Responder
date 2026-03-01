@@ -54,13 +54,11 @@ typedef struct{
 
 //|->Functions
 void Delay(volatile uint32_t ms);
-void USART_EnQ(const unsigned char data);
-void USART_EnQBytes(const unsigned char *data);
-void Byte2String(uint8_t val, unsigned char *out);
-int I2C_Read(uint8_t addr, uint8_t reg, uint8_t *buf, uint8_t len);
-void i2c_write_reg(uint8_t reg, uint8_t val);
-uint8_t i2c_read_reg(uint8_t reg);
-void i2c_read_multi(uint8_t reg, uint8_t *buf, uint8_t len);
+void USART_EnQ(char *data);
+void Byte2String(uint8_t val, char *out);
+void I2C_Write(uint8_t slave_address, uint8_t register_address, uint8_t data);
+void I2C_Read(uint8_t addr, uint8_t reg, uint8_t len);
+void TimeoutError();
 //<-|
 
 #endif
