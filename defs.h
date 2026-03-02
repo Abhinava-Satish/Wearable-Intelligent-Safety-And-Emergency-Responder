@@ -59,6 +59,9 @@ void Byte2String(uint8_t val, char *out);
 void I2C_Write(uint8_t slave_address, uint8_t register_address, uint8_t data);
 void I2C_Read(uint8_t addr, uint8_t reg, uint8_t len);
 void TimeoutError();
+void Sensor_Configuration();
+void AxG_ReadnPrint();
+void Int2String(int val, char *out);
 //<-|
 
 #endif

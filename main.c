@@ -1,8 +1,10 @@
 #include "defs.h"
+#include <stdint.h>
 
 //|-> Global Variables
 
 #define LSM_Address 0x6A
+#define FullScaleSensitivity 16384
 
 //USART Variables
 #define RingBuffer_Length 32U //Always a power of 2
@@ -12,7 +14,7 @@ volatile uint8_t RingHead = 0, RingTail = 0;
 //I2C Variables
 typedef enum{ I2C_State_Idle, I2C_State_Write, I2C_State_Reg_Write, I2C_State_Read}I2C_State_Enum;
 volatile I2C_State_Enum I2C_State = I2C_State_Idle;
-volatile uint8_t I2C_State_Busy = 0, I2C_TxData, I2C_RxBuffer[12], I2C_RxLength, I2C_Index, I2C_SlaveAddress, I2C_Reg_Address;
+volatile uint8_t I2C_State_Busy = 0, I2C_TxData, I2C_RxBuffer[32], I2C_RxLength, I2C_Index, I2C_SlaveAddress, I2C_Reg_Address;
 
 //<-|
 
@@ -130,8 +132,14 @@ int main(void)
   USART_EnQ("Who Am I : 0x");
   USART_EnQ(buf);
   USART_EnQ("\r\r");
+  
+  Sensor_Configuration();
+  
+  while (1)
+  {
+    AxG_ReadnPrint();
+  }
 
-  while (1);
 }
 
 //<-|
@@ -243,6 +251,46 @@ void Byte2String(uint8_t val, char *out)
 
 //<-|
 
+//|-> Int2String Function
+
+void Int2String(int val, char *out)
+{
+  if(val == 0)
+  {
+    *out++ = '0'  ;
+    *out = '\0';
+    return;
+  }
+
+  unsigned int uval;
+  if(val < 0)
+  {
+    *out++ = '-';
+    uval = -((unsigned int)val);
+  }
+  else
+    uval = val;
+ 
+  char *start = out, temp;
+
+  while(uval != 0)
+  {
+    *out++ = (uval % 10) + '0';
+    uval /= 10;
+  }
+  
+  *out-- = '\0';
+
+  while(start < out)
+  {
+    temp = *out;
+    *out-- = *start;
+    *start++ = temp;
+  }  
+}
+
+//<-|
+
 //|-> USART_EnQ Function
 
 void USART_EnQ(char *data)
@@ -258,6 +306,7 @@ void USART_EnQ(char *data)
 
     USART1->CR1 |= (1U << 7);   // TXFNFIE
 }
+
 //<-|
 
 //|-> I2C_Write Function
@@ -311,4 +360,71 @@ void I2C_Read(uint8_t addr, uint8_t reg, uint8_t len)
 
 //<-|
 
+//|-> Sensor Configuration Function 
+
+void Sensor_Configuration()
+{
+  I2C_Write(LSM_Address, 0x12, 0x01);   //Sensor Reset (CTRL3)
+  Delay(100);
+  I2C_Write(LSM_Address, 0x12, 0x44);   //CTRL3 Register
+  I2C_Write(LSM_Address, 0x10, 0x06);   //Accelerometer Control Register
+  I2C_Write(LSM_Address, 0x11, 0x06);   //Gyroscope Control Register
+  I2C_Write(LSM_Address, 0x15, 0x0C);   //Gyroscope FullScale(CTRL6)
+  I2C_Write(LSM_Address, 0x17, 0x03);   //Accelerometer FullScale(CTRL8)
+  I2C_Write(LSM_Address, 0x5D, 0x0F);   //Free Fall
+  I2C_Write(LSM_Address, 0x5C, 0x80);   //WAKE_UP_DUR
+  
+  
+}
+
+//<-|
+
+//|-> Accelerometer & Gyroscope Read & Print Function
+
+void AxG_ReadnPrint()
+{
+  int32_t Out_GX, Out_GY, Out_GZ, Out_AX, Out_AY, Out_AZ;
+  char buf[12];
+  I2C_Read(LSM_Address, 0x22, 12);
+  Delay(100);
+  Out_GX = ((int16_t)(I2C_RxBuffer[0]  | I2C_RxBuffer[1]  << 8)) * 140;
+  Out_GY = ((int16_t)(I2C_RxBuffer[2]  | I2C_RxBuffer[3]  << 8)) * 140;
+  Out_GZ = ((int16_t)(I2C_RxBuffer[4]  | I2C_RxBuffer[5]  << 8)) * 140;
+  Out_AX = ((int16_t)(I2C_RxBuffer[6]  | I2C_RxBuffer[7]  << 8)) * 488 / 1000;
+  Out_AY = ((int16_t)(I2C_RxBuffer[8]  | I2C_RxBuffer[9]  << 8)) * 488 / 1000;
+  Out_AZ = ((int16_t)(I2C_RxBuffer[10] | I2C_RxBuffer[11] << 8)) * 488 / 1000;
+
+  //Scale Appropriately
+    
+  Int2String(Out_GX , buf);
+  USART_EnQ("GX: ");
+  USART_EnQ(buf);
+  USART_EnQ(" mdps\t");
+  Int2String(Out_GY, buf);
+  USART_EnQ("GY: ");
+  USART_EnQ(buf);
+  USART_EnQ(" mdps\t");
+  Int2String(Out_GZ, buf);
+  USART_EnQ("GZ: ");
+  USART_EnQ(buf);
+  USART_EnQ(" mdps\r");
+
+  Int2String(Out_AX, buf);
+  USART_EnQ("AX: ");
+  USART_EnQ(buf);
+  USART_EnQ(" mg\t");
+  Int2String(Out_AY, buf);
+  USART_EnQ("AY: ");
+  USART_EnQ(buf);
+  USART_EnQ(" mg\t");
+  Int2String(Out_AZ, buf);
+  USART_EnQ("AZ: ");
+  USART_EnQ(buf);
+  USART_EnQ(" mg\r\r");
+  
+  Delay(3000);
+
+}
+
+//<-|
 

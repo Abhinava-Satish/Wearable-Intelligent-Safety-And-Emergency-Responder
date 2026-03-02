@@ -12,6 +12,7 @@ PROG_DIR      := ..\toolchains\Cube-Programmer\bin
 CC := $(TOOLCHAIN_DIR)\arm-none-eabi-gcc.exe
 AS := $(TOOLCHAIN_DIR)\arm-none-eabi-gcc.exe
 LD := $(TOOLCHAIN_DIR)\arm-none-eabi-gcc.exe
+OBJCOPY := $(TOOLCHAIN_DIR)\arm-none-eabi-objcopy.exe
 
 # =============================================================================
 # Paths & Files
@@ -19,6 +20,7 @@ LD := $(TOOLCHAIN_DIR)\arm-none-eabi-gcc.exe
 
 BUILD_DIR := build
 ELF       := $(BUILD_DIR)\firmware.elf
+BIN       := $(BUILD_DIR)\firmware.bin
 
 SRC_C     := main.c
 SRC_S     := startup.s
@@ -65,7 +67,7 @@ LDFLAGS := $(CPU_FLAGS) \
 # Build
 # =============================================================================
 
-all: $(ELF)
+all: $(ELF) $(BIN)
 
 # -----------------------------------------------------------------------------
 # Build rules
@@ -82,6 +84,9 @@ $(OBJ_S): $(SRC_S) | $(BUILD_DIR)
 
 $(ELF): $(OBJ_C) $(OBJ_S)
 	$(LD) $(LDFLAGS) $^ -o $@
+
+$(BIN): $(ELF)
+	$(OBJCOPY) -O binary $< $@
 
 # -----------------------------------------------------------------------------
 # Flash
